@@ -21,7 +21,7 @@ import roppy    # needed to convert from sigma- to z-coordinates
 import cmocean  # for colormaps
 
 # module(s) part of this package
-import ncout  # extracting data from netcdfs
+from . import ncout
 
 class RomsViz(ncout.NetcdfOut):
     def __init__(self, filename, infofile="romsviz/namelist.json"):

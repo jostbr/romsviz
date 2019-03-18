@@ -14,7 +14,7 @@ import collections
 import datetime as dt
 import numpy as np
 import netCDF4
-import outvar
+from . import outvar
 
 class NetcdfOut(object):
     """Class docstring...
@@ -45,7 +45,7 @@ class NetcdfOut(object):
 
         self.filepath = filepath
         self.filepaths, self.netcdfs = self.open_data()
-        self.dims = {k.encode("utf8"): v for k, v in self.netcdfs[0].dimensions.items()}
+        self.dims = {str(k): v for k, v in self.netcdfs[0].dimensions.items()}
         self.default_lim = (None, None)
         self.time_name, self.time_dim = self._get_unlimited_dim()
 
@@ -125,7 +125,7 @@ class NetcdfOut(object):
         var = outvar.OutVar()
         var.name = var_name
         var.meta = self._get_var_meta(var.name)
-        var.dim_names = [s.encode("utf8") for s in var.meta.dimensions]
+        var.dim_names = [str(s) for s in var.meta.dimensions]
         self._verify_kwargs(var.name, var.dim_names, **limits)
         var.lims = self._get_dim_lims(var.dim_names, **limits)
         var.bounds = list(var.meta.shape)
