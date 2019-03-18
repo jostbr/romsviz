@@ -106,14 +106,11 @@ class NetcdfOut(object):
         of interest.
 
         Args:
-            var_name (string) : Name of variable to be extracted
-
-        Kwargs:
+            var_name (string)   : Name of variable to be extracted
             limits (str: tuple) : Lower- and upper index limits for a dimension to
                                   the variable. Min index is 0 and max index is the
                                   size of the particular dimension. Limits for a
                                   dimension defaults to (0, dim.size).
-
         Returns:
             var (outvar.OutVar) : Custom variable object containing info about the
                                   extracted variable including a data array within
@@ -173,7 +170,6 @@ class NetcdfOut(object):
 
         Args:
             var_name (string) : Name of variable
-
         Returns:
             var_meta (netCDF4.Variable) : Meta data for the variable
         """
@@ -199,9 +195,7 @@ class NetcdfOut(object):
 
         Args:
             vd_names (list) : List of actual variable dimension names
-
-        Kwargs:
-            limits (dict) : See limits in self.get_var()
+            limits (dict)   : See limits in self.get_var()
         """
         idx_lims = list()
 
@@ -225,7 +219,14 @@ class NetcdfOut(object):
         return idx_lims
 
     def _get_range_dims(self, dim_names, lims):
-        """Function docstring..."""
+        """
+        Function that finds out what dimensions have limits are over a
+        range, i.e. not a single index, but spanning several.
+
+        Args:
+            dim_names (list) : List of dimension names
+            lims (list)      : List of tuples with index limits for each dimension
+        """
         range_dims = list()
 
         for d_name, lim in zip(dim_names, lims):
@@ -239,7 +240,7 @@ class NetcdfOut(object):
         Function that raises error if not all dimension names
         specified in limits are in valid dimensions for the variable.
 
-        Kwargs:
+        Args:
             limits (dict) : See limits in self.get_var()
         """
         for key in limits.keys():
@@ -335,7 +336,14 @@ class NetcdfOut(object):
         return idx[0][0]
 
     def _compute_time_dist(self, idx_start, idx_stop):
-        """Function docstring..."""
+        """
+        Function that computes the time indices to extract across files, thus
+        tells what indices to extract from what files.
+
+        Args:
+            idx_start (int) : Starting index of total time slice
+            idx_stop (int)  : Stop index of total time slice
+        """
         t_per_file = [d.variables[self.time_name].shape[0] for d in self.netcdfs]
         use_files = [False for _ in t_per_file]  # bool values for relevant files
         idx_total = 0       # to count total indices over all files
@@ -372,7 +380,14 @@ class NetcdfOut(object):
         return use_files, t_dist
 
     def _lims_to_slices(self, lims):
-        """Function docstring..."""
+        """
+        Function that converts a list of index limits to a list of index slices,
+        i.e. each tuple of index limits in the list is expanded to a slice covering
+        all covering the indexes between the end points.
+
+        Args:
+            lims (list) : List of tuples with index limits for each dimension
+        """
         slices = list()
 
         for l in lims:
@@ -385,10 +400,20 @@ class NetcdfOut(object):
         return tuple(slices)
 
     def _get_var_nd(self, var_name, slices, dataset):
-        """Function docstring..."""
+        """
+        Function that reads an n-dimensional variable from a dataset.
+
+        Args:
+            var_name (str)    : Name of variable to read
+            slices (tuple)    : Tuple of slice objects (one for each dimension)
+                                for indexing the variable
+            dataset (Dataset) : The dataset to read from
+        """
         return dataset.variables[var_name][slices]
 
     def __del__(self):
-        """Destructor function closing all files."""
+        """
+        Destructor function closing all files.
+        """
         for data in self.netcdfs:
             data.close()
