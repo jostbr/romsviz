@@ -98,9 +98,4 @@ class OutVar(object):
         return lims_str + ")"
 
     def __str__(self):
-        """Print representation of ocject as of now..."""
-        if self.meta is None:
-            return self.name
-
-        else:
-            return self.meta
+        raise NotImplementedError
