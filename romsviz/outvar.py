@@ -97,5 +97,16 @@ class OutVar(object):
 
         return lims_str + ")"
 
+    def __getitem__(self, indices):
+        """
+        Method to support instance indexing/slicing.
+
+        Args:
+            indices (int/slice) : Integer index or slice object
+        Returns:
+            array (ndarray) : The indexed self.data[indices] array
+        """
+        return self.data.__getitem__(indices)
+
     def __str__(self):
         raise NotImplementedError
