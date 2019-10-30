@@ -11,10 +11,11 @@
 
 # general modules
 import json
-import pandas as pd
+import datetime as dt
+import numpy as np
 import matplotlib.pyplot as plt
 import mpl_toolkits.axes_grid1
-import datetime as dt
+import cartopy
 
 # other ROMS specific modules
 import roppy    # needed to convert from sigma- to z-coordinates
@@ -24,36 +25,26 @@ import cmocean  # for colormaps
 from . import ncout
 
 class RomsViz(ncout.NetcdfOut):
-    def __init__(self, filename, infofile="romsviz/namelist.json"):
+    def __init__(self, filename, varinfo_file="romsviz/varinfo.json"):
         super(RomsViz, self).__init__(filename)
-        self.x_id = "x"
-        self.y_id = "y"
-        self.z_id = "z"
-        self.t_id = "t"
-        self.coors = {self.x_id: ["xi_rho", "xi_u", "xi_v", "xi_psi"],
-                      self.y_id: ["eta_rho", "eta_u", "eta_v", "eta_psi"],
-                      self.z_id: ["s_rho", "s_w"],
-                      self.t_id: ["ocean_time"]}
-
-        self.cmaps = {"temp": cmocean.cm.thermal, "salt": cmocean.cm.haline,
-                      "default": plt.cm.viridis}  # perhaps replace with json input in future
+        self.varinfo_file = varinfo_file
         self.default_title_fs = 20
         self.default_label_fs = 15
         plt.style.use("seaborn-deep")
         plt.rc("font", family="serif")
+        self.var_info = self.load_varinfo(varinfo_file)
 
     def set_gridfile(self, filename):
+        """Method docstring..."""
         self.gridfile = ncout.NetcdfOut(filename)
 
-    def parse_namelist(self, infofile):
-        """Function docstring..."""
+    def load_varinfo(self, infofile):
+        """Method docstring..."""
         with open(infofile, "r") as nl:
-            data = json.load(nl)
-
-        return data
+            return json.load(nl)
 
     def time_series(self, var_name, figax=None, **limits):
-        """Function docstring..."""
+        """Method docstring..."""
         var = self.get_var(var_name, **limits)
         ranged_coors = ["t"]
         self.check_range_dims(var, ranged_coors)
@@ -76,7 +67,7 @@ class RomsViz(ncout.NetcdfOut):
         return fig, ax
 
     def depth_time_contour(self, var_name, figax=None, **limits):
-        """Function docstring..."""
+        """Method docstring..."""
         var = self.get_var(var_name, **limits)
         ranged_coors = ["z", "t"]
         self.check_range_dims(var, ranged_coors)
@@ -110,55 +101,31 @@ class RomsViz(ncout.NetcdfOut):
         return fig, ax
 
     def csection(self, var_name, figax=None, lonlat=False, **limits):
-        """Function docstring..."""
+        """Method docstring..."""
         var = self.get_var(var_name, **limits)
-        ranged_coors = ["x", "y", "z", "t"]
-        range_dims = self.check_range_dims(var, ranged_coors, upper_limit=2)
+        range_dims = var.get_range_dims(enforce=2)
+        xaxis_name = self.vardim_to_axisdim(var.name, "xaxis", range_dims)
+        yaxis_name = self.vardim_to_axisdim(var.name, "yaxis", range_dims)
+        x_axis = self.get_var(xaxis_name, **self._var2var_limits(xaxis_name, **limits))
+        y_axis = self.get_var(yaxis_name, **self._var2var_limits(yaxis_name, **limits))
 
-        any_in = lambda a, b: any(i in b for i in a)
-
-        if any_in(range_dims, self.coors[self.x_id]):
-            if not hasattr(self, "gridfile"):
-                raise ValueError("No grid file!")
-
-            x_name = var.identify_dim(self.coors[self.x_id])
-            x_lim = var.extract_lim(x_name)
-            kw = {x_name: x_lim}
-            x_axis = self.gridfile.get_var(x_name, **kw).data
-
-        if any_in(range_dims, self.coors[self.y_id]):
-            raise ValueError("No grid file!")
-
-        if any_in(range_dims, self.coors[self.t_id]):
-            x_axis = var.time
-
-        if any_in(range_dims, self.coors[self.z_id]):
-            y_axis = self.get_sdepths(var)  # depth of s levels associated with <var>
-            import numpy as np
-            y_axis = y_axis[:,np.where(y_axis==np.min(y_axis))[1][0]]
-
-        print(x_axis.shape, y_axis.shape, var.data.shape)
+        print(var.data.mask)
 
         # plot time series with dates on the x-axis
         fig, ax = self._get_figax(figsize=(12,5), figax=figax)
-
-        try:
-            print(var.data.fill_value)
-            print(np.ma.masked_where(var.data==var.data.fill_value, var.data))
-            cs = ax.contourf(x_axis, y_axis, var.data, cmap=self.cmaps[var.name])
-        except KeyError:
-            cs = ax.contourf(x_axis, y_axis, var.data.transpose(), cmap=self.cmaps["default"])
+        cs = ax.contourf(x_axis.data, y_axis.data, np.ma.masked_where(var.data==var.data.max(), var.data), 50, cmap=cmocean.cm.thermal)
 
         # colorbar stuff
         divider = mpl_toolkits.axes_grid1.make_axes_locatable(ax)
         cax = divider.append_axes("right", size="2.5%", pad=0.15)
-        cbar_label = var.attr_to_string(var.meta, "units")
+        #cbar_label = var.attr_to_string(var.meta, "units")
+        cbar_label = "hax"
         cb = plt.colorbar(cs, cax=cax, label=cbar_label, orientation="vertical")
 
         # title and labels
-        name = var.attr_to_string(var.meta, ["long_name", "standard_name"])
+        #name = var.attr_to_string(var.meta, ["long_name", "standard_name"])
         limits_str = var.lims_to_str(exclude=[var.time_name, "s_rho"])
-        ax.set_title("{} {}".format(name, limits_str))
+        ax.set_title("{} {}".format("hax", limits_str))
         ax.set_ylabel("Depth [m]")
         ax = self._set_default_txtprop(ax)
 
@@ -168,35 +135,27 @@ class RomsViz(ncout.NetcdfOut):
         return fig, ax
 
     def horizontal_csection(self, var_name, figax=None, **limits):
-        """Function docstring..."""
+        """Method docstring..."""
         limits["s_rho"] = 41  # default to surface
         raise NotImplementedError
 
-    def check_range_dims(self, var, answers, upper_limit=1):
-        """Function docstring..."""
-        range_dims = self._get_range_dims(var.dim_names, var.lims)
-        allowed = [d for c in answers for d in self.coors[c] if d in var.dim_names]
-        print(range_dims)
-        print(allowed)
+    def vardim_to_axisdim(self, var_name, axis_name, range_dims):
+        """Method docstring..."""
+        for rd in range_dims:
+            if self.var_info["dimensions"][rd] in self.var_info[var_name]["csection"][axis_name]:
+                return self.var_info["dimensions"][rd]
 
-        for r_dim in range_dims:
-            if r_dim not in allowed:
-                raise ValueError("{} cannot span multiple indices!".format(r_dim))
-
-        if len(range_dims) > upper_limit:
-            raise ValueError("Only {} dimensions can span multiple indices!".format(upper_limit))
-
-        return range_dims
+        raise ValueError("No dim in {} found in {}".format(range_dims, self.var_info[var_name]["csection"][axis_name]))
 
     def lonlat_from_lims(self, x_lim, y_lim):
-        """Function docstring..."""
+        """Method docstring..."""
         raise NotImplementedError
         lon_var = self.get_var("lon_rho", xi_rho=x_lim, eta_rho=y_lim)
         lat_var = self.get_var("lat_rho", xi_rho=x_lim, eta_rho=y_lim)
         return lon_var, lat_var
 
     def get_map(self, **map_kwargs):
-        """Function docstring..."""
+        """Method docstring..."""
         raise NotImplementedError
         if len(map_kwargs) == 0:
             map_kwargs = self.map_kwargs_from_netcdf()
@@ -207,7 +166,7 @@ class RomsViz(ncout.NetcdfOut):
         raise NotImplementedError
 
     def get_sdepths(self, var):
-        """Function docstring..."""
+        """Method docstring..."""
         # get necessary variables for the vertical grid
         h = self.get_var("h").data
         H_c = float(self.get_var("hc").data)
@@ -217,9 +176,9 @@ class RomsViz(ncout.NetcdfOut):
         x_name = var.identify_dim(self.coors["x"])
         y_name = var.identify_dim(self.coors["y"])
         z_name = var.identify_dim(self.coors["z"])
-        xlim = var.extract_lim(x_name)
-        ylim = var.extract_lim(y_name)
-        zlim = var.extract_lim(z_name)
+        xlim = var.get_lim(x_name)
+        ylim = var.get_lim(y_name)
+        zlim = var.get_lim(z_name)
         slices = self._lims_to_slices([zlim, ylim, xlim])
 
         # variable defined at rho s-levels
@@ -235,7 +194,7 @@ class RomsViz(ncout.NetcdfOut):
         return z.squeeze()
 
     def images_to_mp4(self, method="convert"):
-        """Function docstring..."""
+        """Method docstring..."""
         raise NotImplementedError
         if method == "convert":
             subprocess.call("convert -loop 0 -delay 10 -hax 1 {} {}".format(wildcard, output_fn))

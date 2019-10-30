@@ -411,3 +411,16 @@ class NetcdfOut(object):
             dataset (Dataset) : The dataset to read from
         """
         return dataset.variables[var_name][slices]
+
+    def _var2var_limits(self, var_name, **limits):
+        """
+        Method that takes in a set of dimension limits and keeps only the ones
+        that apply with the specified variable.
+
+        Args:
+            var_name (str) : Name of variable to extract limits for
+            limits (dict)  : Dict of limits from e.g. some other variable
+                             to extract a subset of for <var_name>
+        """
+        with netCDF4.Dataset(self.filepaths[0], mode="r") as ds:
+            return {k: v for k, v in limits.items() if k in ds.variables[var_name].dimensions}

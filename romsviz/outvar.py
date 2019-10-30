@@ -13,6 +13,7 @@ class OutVar(object):
         self.name = None
         self.meta = None
         self.lims = None
+        self.bounds = None
         self.time_dist = None
         self.use_files = None
         self.dim_names = None
@@ -20,9 +21,9 @@ class OutVar(object):
         self.time_name = None
         self.time = None
 
-    def extract_lim(self, dim_name):
+    def get_lim(self, dim_name):
         """
-        Function that extracts the index limits for a dimension.
+        Method that extracts the index limits for a dimension.
 
         Args:
             dim_name (str) : Name of dimesnion tog et index limtis for
@@ -33,12 +34,26 @@ class OutVar(object):
             if self.dim_names[i] == dim_name:
                 return self.lims[i]
 
-        raise ValueError("{} is not a dimension of {}!".format(
-                         dim_name, self.var_name))
+        raise ValueError("{} is not a dimension of {}!".format(dim_name, self.var_name))
+
+    def get_bound(self, dim_name):
+        """
+        Method that extracts the index bounds for a dimension.
+
+        Args:
+            dim_name (str) : Name of dimesnion tog et index limtis for
+        Returns:
+            lims (tuple) : (start, end) bound of requested dim
+        """
+        for i in range(len(self.dim_names)):
+            if self.dim_names[i] == dim_name:
+                return self.bounds[i]
+
+        raise ValueError("{} is not a dimension of {}!".format(dim_name, self.var_name))
 
     def identify_dim(self, suggestions):
         """
-        Function that checks if variable has one of the suggested dimensions.
+        Method that checks if variable has one of the suggested dimensions.
 
         Args:
             suggestions (list) : List of name sggestions for dimensions
@@ -52,9 +67,32 @@ class OutVar(object):
 
         raise ValueError("No dimension of {} are in <suggestions>".format(self.name))
 
+    def get_range_dims(self, enforce=1):
+        """
+        Method that finds the dimensions spanning over a range of indices,
+        i.e. the dimensions which are not one in length for the instance self.
+
+        Returns:
+            range_dims (list) : List fo dimension names
+        """
+        range_dims = list()
+        print(self.bounds)
+
+        for dim_name, (l0, l1) in zip(self.dim_names, self.lims):
+            l0 = 0 if l0 is None else l0
+            l1 = self.get_bound(dim_name) if l1 is None else l1
+
+            if l1 - l0 > 0:
+                range_dims.append(dim_name)
+
+        if len(range_dims) != enforce:
+            raise ValueError("Must have exactly {} range dims, has {}!".format(enforce, len(range_dims)))
+
+        return range_dims
+
     def attr_to_string(self, obj, attr):
         """
-        Function that gives the string value of the requested attribute.
+        Method that gives the string value of the requested attribute.
 
         Args:
             obj (type(obj))  : Some object whos string attribute to get
@@ -75,7 +113,7 @@ class OutVar(object):
 
     def lims_to_str(self, exclude=list()):
         """
-        Function that converts self's lims to a string
+        Method that converts self's lims to a string
 
         Args:
             exclude (list) : List of dim names to exclude in teh string
