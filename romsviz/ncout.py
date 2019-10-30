@@ -204,23 +204,6 @@ class NetcdfOut(object):
 
         return idx_lims
 
-    def _get_range_dims(self, dim_names, lims):
-        """
-        Method that finds out what dimensions have limits are over a
-        range, i.e. not a single index, but spanning several.
-
-        Args:
-            dim_names (list) : List of dimension names
-            lims (list)      : List of tuples with index limits for each dimension
-        """
-        range_dims = list()
-
-        for d_name, lim in zip(dim_names, lims):
-            if lim[1] != lim[0] or None in lim:
-                range_dims.append(d_name)
-
-        return range_dims
-
     def _verify_kwargs(self, var_name, vd_names, **limits):
         """
         Method that raises error if not all dimension names
